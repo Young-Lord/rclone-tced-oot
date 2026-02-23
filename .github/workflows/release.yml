@@ -1,0 +1,127 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (for example: v0.1.0)"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark this release as prerelease"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  BINARY_NAME: rclone-tced
+
+jobs:
+  build:
+    name: Build ${{ matrix.goos }}-${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+
+          ext=""
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            ext=".exe"
+          fi
+
+          output="${BINARY_NAME}_${{ inputs.tag }}_${{ matrix.goos }}_${{ matrix.goarch }}${ext}"
+
+          GOOS="${{ matrix.goos }}" GOARCH="${{ matrix.goarch }}" CGO_ENABLED=0 \
+            go build \
+              -trimpath \
+              -ldflags "-s -w -X github.com/rclone/rclone/fs.Version=${{ inputs.tag }}" \
+              -o "dist/${output}" \
+              .
+
+      - name: Package artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+
+          base="${BINARY_NAME}_${{ inputs.tag }}_${{ matrix.goos }}_${{ matrix.goarch }}"
+
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            zip "${base}.zip" "${base}.exe"
+          else
+            tar -czf "${base}.tar.gz" "${base}"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: build-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          name: ${{ inputs.tag }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ inputs.prerelease }}
+          generate_release_notes: true
+          files: |
+            dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
