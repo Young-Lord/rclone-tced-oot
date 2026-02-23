@@ -94,6 +94,23 @@ jobs:
     needs: build
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Collect release metadata
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          echo "rclone_version=$(go list -m -f '{{.Version}}' github.com/rclone/rclone)" >> "$GITHUB_OUTPUT"
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -114,10 +131,14 @@ jobs:
           tag_name: ${{ env.RELEASE_TAG }}
           name: ${{ env.RELEASE_NAME }}
           target_commitish: ${{ github.sha }}
-          prerelease: true
+          prerelease: false
           overwrite_files: true
           body: |
             Rolling CI release for rclone-tced-oot.
+
+            - Build time (UTC): `${{ steps.metadata.outputs.build_time }}`
+            - rclone version: `${{ steps.metadata.outputs.rclone_version }}`
+            - Commit: `${{ github.sha }}`
 
             Assets are replaced on each successful workflow run.
           files: |
