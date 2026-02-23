@@ -57,6 +57,6 @@ go get github.com/rclone/rclone@latest
 go mod tidy
 ```
 
-- If upstream rclone later includes `tced`, remove the import of
-  `github.com/Young-Lord/rclone-tced-oot/backend/tced` in `rclone.go` to avoid duplicate backend
-  registration.
+## Credit
+
+- [1357310795/TboxWebdav](https://github.com/1357310795/TboxWebdav)
