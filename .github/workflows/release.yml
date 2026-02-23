@@ -66,6 +66,21 @@ jobs:
               -o "dist/${output}" \
               .
 
+      - name: Build plugin (linux-amd64)
+        if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          output="librcloneplugin_backend_tced_${RELEASE_TAG}_linux_amd64.so"
+
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+            go build \
+              -buildmode=plugin \
+              -trimpath \
+              -o "dist/${output}" \
+              ./plugin/backend_tced
+
       - name: Package artifact
         shell: bash
         run: |
@@ -78,6 +93,11 @@ jobs:
             zip "${base}.zip" "${base}.exe"
           else
             tar -czf "${base}.tar.gz" "${base}"
+          fi
+
+          if [ "${{ matrix.goos }}" = "linux" ] && [ "${{ matrix.goarch }}" = "amd64" ]; then
+            plugin="librcloneplugin_backend_tced_${RELEASE_TAG}_linux_amd64.so"
+            tar -czf "librcloneplugin_backend_tced_${RELEASE_TAG}_linux_amd64.tar.gz" "${plugin}"
           fi
 
       - name: Upload artifact
@@ -139,6 +159,7 @@ jobs:
             - Build time (UTC): `${{ steps.metadata.outputs.build_time }}`
             - rclone version: `${{ steps.metadata.outputs.rclone_version }}`
             - Commit: `${{ github.sha }}`
+            - Plugin build: `librcloneplugin_backend_tced_${{ env.RELEASE_TAG }}_linux_amd64.tar.gz`
 
             Assets are replaced on each successful workflow run.
           files: |

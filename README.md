@@ -23,6 +23,28 @@ go build -o rclone-tced .
 
 Pick storage type `tced` in `rclone config`.
 
+## Build plugin (.so)
+
+```bash
+go mod tidy
+go build -buildmode=plugin -o librcloneplugin_backend_tced.so ./plugin/backend_tced
+```
+
+Load it in local rclone:
+
+```bash
+mkdir -p ~/.config/rclone/plugins
+cp librcloneplugin_backend_tced.so ~/.config/rclone/plugins/
+export RCLONE_PLUGIN_PATH="$HOME/.config/rclone/plugins"
+
+rclone help backends | grep tced
+```
+
+Notes:
+
+- Go plugin mode is supported on Linux/macOS.
+- Plugin and host rclone must be built from compatible rclone/go versions.
+
 ## Notes
 
 - This project tracks upstream rclone via `go.mod`.
