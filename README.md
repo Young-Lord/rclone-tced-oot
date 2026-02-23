@@ -57,6 +57,6 @@ go get github.com/rclone/rclone@latest
 go mod tidy
 ```
 
-## Credit
+## Credits
 
 - [1357310795/TboxWebdav](https://github.com/1357310795/TboxWebdav)
