@@ -2,22 +2,17 @@ name: Build and Release
 
 on:
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag (for example: v0.1.0)"
-        required: true
-        type: string
-      prerelease:
-        description: "Mark this release as prerelease"
-        required: false
-        default: false
-        type: boolean
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 env:
   BINARY_NAME: rclone-tced
+  RELEASE_TAG: ci
+  RELEASE_NAME: CI Builds
 
 jobs:
   build:
@@ -62,12 +57,12 @@ jobs:
             ext=".exe"
           fi
 
-          output="${BINARY_NAME}_${{ inputs.tag }}_${{ matrix.goos }}_${{ matrix.goarch }}${ext}"
+          output="${BINARY_NAME}_${RELEASE_TAG}_${{ matrix.goos }}_${{ matrix.goarch }}${ext}"
 
           GOOS="${{ matrix.goos }}" GOARCH="${{ matrix.goarch }}" CGO_ENABLED=0 \
-            go build \
+              go build \
               -trimpath \
-              -ldflags "-s -w -X github.com/rclone/rclone/fs.Version=${{ inputs.tag }}" \
+              -ldflags "-s -w -X github.com/rclone/rclone/fs.Version=${RELEASE_TAG}" \
               -o "dist/${output}" \
               .
 
@@ -77,7 +72,7 @@ jobs:
           set -euo pipefail
           cd dist
 
-          base="${BINARY_NAME}_${{ inputs.tag }}_${{ matrix.goos }}_${{ matrix.goarch }}"
+          base="${BINARY_NAME}_${RELEASE_TAG}_${{ matrix.goos }}_${{ matrix.goarch }}"
 
           if [ "${{ matrix.goos }}" = "windows" ]; then
             zip "${base}.zip" "${base}.exe"
@@ -116,11 +111,15 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.tag }}
-          name: ${{ inputs.tag }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
           target_commitish: ${{ github.sha }}
-          prerelease: ${{ inputs.prerelease }}
-          generate_release_notes: true
+          prerelease: true
+          overwrite_files: true
+          body: |
+            Rolling CI release for rclone-tced-oot.
+
+            Assets are replaced on each successful workflow run.
           files: |
             dist/*
         env:
