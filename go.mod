@@ -2,7 +2,7 @@ module github.com/Young-Lord/rclone-tced-oot
 
 go 1.25.0
 
-require github.com/rclone/rclone v1.73.4
+require github.com/rclone/rclone v1.73.5
 
 require (
 	bazil.org/fuse v0.0.0-20230120002735-62a210ff1fd5 // indirect
